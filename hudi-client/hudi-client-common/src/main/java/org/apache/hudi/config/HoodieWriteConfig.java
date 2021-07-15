@@ -1546,6 +1546,11 @@ public class HoodieWriteConfig extends HoodieConfig {
       return this;
     }
 
+    public Builder withPopulateMetaColumns(boolean populateMetaColumns) {
+      writeConfig.setValue(HoodieTableConfig.HOODIE_POPULATE_META_COLUMNS, Boolean.toString(populateMetaColumns));
+      return this;
+    }
+
     public Builder withProperties(Properties properties) {
       this.writeConfig.getProps().putAll(properties);
       return this;

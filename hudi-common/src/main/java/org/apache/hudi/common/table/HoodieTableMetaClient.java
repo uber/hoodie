@@ -602,7 +602,7 @@ public class HoodieTableMetaClient implements Serializable {
     private String partitionColumns;
     private String bootstrapIndexClass;
     private String bootstrapBasePath;
-    private boolean populateMetaColumns;
+    private Boolean populateMetaColumns;
 
     private PropertyBuilder() {
 
@@ -787,7 +787,7 @@ public class HoodieTableMetaClient implements Serializable {
       if (null != recordKeyFields) {
         tableConfig.setValue(HoodieTableConfig.HOODIE_TABLE_RECORDKEY_FIELDS, recordKeyFields);
       }
-      if (!populateMetaColumns) {
+      if (null != populateMetaColumns) {
         tableConfig.setValue(HoodieTableConfig.HOODIE_POPULATE_META_COLUMNS, Boolean.toString(populateMetaColumns));
       }
       return tableConfig.getProps();

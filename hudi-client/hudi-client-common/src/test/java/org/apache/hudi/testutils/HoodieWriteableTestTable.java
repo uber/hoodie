@@ -63,11 +63,13 @@ public class HoodieWriteableTestTable extends HoodieTestTable {
 
   protected final Schema schema;
   protected final BloomFilter filter;
+  protected final boolean populateMetaCols;
 
   protected HoodieWriteableTestTable(String basePath, FileSystem fs, HoodieTableMetaClient metaClient, Schema schema, BloomFilter filter) {
     super(basePath, fs, metaClient);
     this.schema = schema;
     this.filter = filter;
+    this.populateMetaCols = metaClient.getTableConfig().populateMetaColumns();
   }
 
   @Override
@@ -84,22 +86,25 @@ public class HoodieWriteableTestTable extends HoodieTestTable {
     FileCreateUtils.createPartitionMetaFile(basePath, partition);
     String fileName = baseFileName(currentInstantTime, fileId);
 
-    HoodieAvroWriteSupport writeSupport = new HoodieAvroWriteSupport(
-        new AvroSchemaConverter().convert(schema), schema, filter);
+    HoodieAvroWriteSupport writeSupport = new HoodieAvroWriteSupport(new AvroSchemaConverter().convert(schema), schema, filter);
     HoodieAvroParquetConfig config = new HoodieAvroParquetConfig(writeSupport, CompressionCodecName.GZIP,
         ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.DEFAULT_PAGE_SIZE, 120 * 1024 * 1024,
         new Configuration(), Double.parseDouble(HoodieStorageConfig.PARQUET_COMPRESSION_RATIO.defaultValue()));
     try (HoodieParquetWriter writer = new HoodieParquetWriter(
         currentInstantTime,
         new Path(Paths.get(basePath, partition, fileName).toString()),
-        config, schema, contextSupplier)) {
+        config, schema, contextSupplier, populateMetaCols)) {
       int seqId = 1;
       for (HoodieRecord record : records) {
         GenericRecord avroRecord = (GenericRecord) record.getData().getInsertValue(schema).get();
-        HoodieAvroUtils.addCommitMetadataToRecord(avroRecord, currentInstantTime, String.valueOf(seqId++));
-        HoodieAvroUtils.addHoodieKeyToRecord(avroRecord, record.getRecordKey(), record.getPartitionPath(), fileName);
-        writer.writeAvro(record.getRecordKey(), avroRecord);
-        filter.add(record.getRecordKey());
+        if (populateMetaCols) {
+          HoodieAvroUtils.addCommitMetadataToRecord(avroRecord, currentInstantTime, String.valueOf(seqId++));
+          HoodieAvroUtils.addHoodieKeyToRecord(avroRecord, record.getRecordKey(), record.getPartitionPath(), fileName);
+          writer.writeAvro(record.getRecordKey(), avroRecord);
+          filter.add(record.getRecordKey());
+        } else {
+          writer.writeAvro(record.getRecordKey(), avroRecord);
+        }
       }
     }
 
